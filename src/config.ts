@@ -1,4 +1,32 @@
-import { question } from 'readline-sync'
+//@ts-nocheck
+import readline from 'readline';
+
+export const hiddenQuestion = query => new Promise((resolve, reject) => {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+  const stdin = process.openStdin();
+  process.stdin.on('data', char => {
+    char = char + '';
+    switch (char) {
+      case '\n':
+      case '\r':
+      case '\u0004':
+        stdin.pause();
+        break;
+      default:
+        process.stdout.clearLine();
+        readline.cursorTo(process.stdout, 0);
+        process.stdout.write(query + Array(rl.line.length + 1).join('*'));
+        break;
+    }
+  });
+  rl.question(query, value => {
+    rl.history = rl.history.slice(1);
+    resolve(value);
+  });
+});
 export enum ConfigOption {
   KMS_PASSWORD = 1,
   VGS_ALIAS,
@@ -71,13 +99,14 @@ export class Config {
     },
   }
 
-  public getValue(what: ConfigOption): string {
+  public async getValue(what: ConfigOption): Promise<string> {
     const config = this._configOptions[what]
     if (process.env[config.environmentKey]) {
       return process.env[config.environmentKey] as string
     }
-    return question(config.question, {
-      hideEchoBack: true,
-    })
+    console.log(config.question);
+    const password = await hiddenQuestion('> ');
+    return password;
   }
+
 }
