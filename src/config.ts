@@ -16,14 +16,25 @@ export const hiddenQuestion = query => new Promise((resolve, reject) => {
         stdin.pause();
         break;
       default:
-        process.stdout.clearLine();
-        readline.cursorTo(process.stdout, 0);
-        process.stdout.write(query + Array(rl.line.length + 1).join('*'));
+        if(process.stdout){
+          try{
+            process.stdout.clearLine();
+            readline.cursorTo(process.stdout, 0);
+            process.stdout.write(query + Array(rl.line.length + 1).join('*')); 
+  
+          }catch
+          {
+
+          }
+
+        }
         break;
     }
   });
   rl.question(query, value => {
-    rl.history = rl.history.slice(1);
+    if(rl.history){
+      rl.history = rl.history.slice(1);
+    }
     resolve(value);
   });
 });
