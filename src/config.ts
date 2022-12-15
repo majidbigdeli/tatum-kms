@@ -1,7 +1,7 @@
 //@ts-nocheck
 import readline from 'readline';
 
-export const hiddenQuestion = query => new Promise((resolve, reject) => {
+export const HiddenQuestion = query => new Promise((resolve, reject) => {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
@@ -116,7 +116,7 @@ export class Config {
       return process.env[config.environmentKey] as string
     }
     console.log(config.question);
-    const password = await hiddenQuestion('> ');
+    const password = await HiddenQuestion('');
     return password;
   }
 

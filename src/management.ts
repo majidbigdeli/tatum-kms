@@ -12,9 +12,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import _ from 'lodash'
 import { homedir } from 'os'
 import { dirname } from 'path'
-import { question } from 'readline-sync'
 import { v4 as uuid } from 'uuid'
-import { Config, ConfigOption } from './config'
+import { Config, ConfigOption, HiddenQuestion } from './config'
 import { PasswordType, SignedMnemonicWalletForChain, StoreWalletValue, WalletsValidationOptions } from './interfaces'
 
 const config = new Config()
@@ -208,7 +207,7 @@ export const generateManagedPrivateKeyBatch = async (
   pwd: string,
   path?: string,
 ) => {
- await config.getValue(ConfigOption.KMS_PASSWORD)
+  await config.getValue(ConfigOption.KMS_PASSWORD)
   const cnt = Number(count)
   for (let i = 0; i < cnt; i++) {
     const wallet = await generatePureWallet(chain, testnet)
@@ -221,7 +220,7 @@ export const generateManagedPrivateKeyBatch = async (
   }
 }
 
-export const  getWalletFromPath = async (errorMessage: string, path?: string, pwd?: string) => {
+export const getWalletFromPath = async (errorMessage: string, path?: string, pwd?: string) => {
   if (_.isNil(path) || _.isNil(pwd)) {
     console.error('No path or password entered')
     return
@@ -383,11 +382,12 @@ export const getTatumKey = (apiKey: string) => {
     process.env.TATUM_API_KEY = apiKey
   }
 }
-export const getQuestion = (q: string, e?: string) => {
+export const getQuestion = async (q: string, e?: string) => {
   if (e) {
     return e
   }
-  return question(q, {
-    hideEchoBack: true,
-  })
+
+  console.log(q);
+  const answer = await HiddenQuestion('');
+  return answer as string;
 }

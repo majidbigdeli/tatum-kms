@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-import {Currency, generateWallet} from '@tatumio/tatum'
+import { Currency, generateWallet } from '@tatumio/tatum'
 import axios from 'axios'
 import dotenv from 'dotenv'
 import http from 'http'
 import https from 'https'
 import meow from 'meow'
-import {Config} from './config'
-import {PasswordType} from './interfaces';
+import { Config } from './config'
+import { PasswordType } from './interfaces';
 import {
   exportWallets,
   generateManagedPrivateKeyBatch,
@@ -20,7 +20,7 @@ import {
   storePrivateKey,
   storeWallet,
 } from './management'
-import {processSignatures} from './signatures'
+import { processSignatures } from './signatures'
 import HttpAgent from 'agentkeepalive'
 
 dotenv.config()
@@ -148,13 +148,13 @@ const startup = async () => {
       await storeWallet(command[1] as Currency, flags.testnet, await getPassword(getPasswordType(), axiosInstance), flags.path)
       break
     case 'storemanagedwallet':
-      await storeWallet(command[1] as Currency, flags.testnet, await getPassword(getPasswordType(), axiosInstance), flags.path, getQuestion('Enter mnemonic to store:'))
+      await storeWallet(command[1] as Currency, flags.testnet, await getPassword(getPasswordType(), axiosInstance), flags.path, await getQuestion('Enter mnemonic to store:'))
       break
     case 'storemanagedprivatekey':
       await storePrivateKey(
         command[1] as Currency,
         flags.testnet,
-        getQuestion('Enter private key to store:'),
+        await getQuestion('Enter private key to store:'),
         await getPassword(getPasswordType(), axiosInstance),
         flags.path,
       )
