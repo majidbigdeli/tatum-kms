@@ -180,4 +180,11 @@ const startup = async () => {
   }
 }
 
-startup()
+startup().then(() => {
+  if (command[0] !== "daemon") {
+    process.exit(0);
+  }
+}).catch((err) => {
+  console.log(err);
+  process.exit(0);
+})
