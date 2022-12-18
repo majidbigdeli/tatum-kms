@@ -53,7 +53,7 @@ import {
   generatePrivateKeyFromMnemonic as kcsGeneratePrivateKeyFromMnemonic,
   signKMSTransaction as signKcsKMSTransaction,
 } from '@tatumio/tatum-kcs'
-import { AxiosInstance } from 'axios'
+import { AxiosInstance, AxiosError } from 'axios'
 import { getManagedWallets, getWallet, getWalletWithMnemonicForChain } from './management'
 import { KMS_CONSTANTS } from './constants'
 import _ from 'lodash'
@@ -168,11 +168,11 @@ const processTransaction = async (
       const pk =
         wallets[0].mnemonic && blockchainSignature.index !== undefined
           ? await generatePrivateKeyFromMnemonic(
-              Currency.BNB,
-              wallets[0].testnet,
-              wallets[0].mnemonic,
-              blockchainSignature.index,
-            )
+            Currency.BNB,
+            wallets[0].testnet,
+            wallets[0].mnemonic,
+            blockchainSignature.index,
+          )
           : wallets[0].privateKey
       await vetBroadcast(await signVetKMSTransaction(blockchainSignature, pk, testnet), blockchainSignature.id)
       return
@@ -193,11 +193,11 @@ const processTransaction = async (
       const privateKey =
         wallets[0].mnemonic && blockchainSignature.index !== undefined
           ? await generatePrivateKeyFromMnemonic(
-              Currency.ETH,
-              wallets[0].testnet,
-              wallets[0].mnemonic,
-              blockchainSignature.index,
-            )
+            Currency.ETH,
+            wallets[0].testnet,
+            wallets[0].mnemonic,
+            blockchainSignature.index,
+          )
           : wallets[0].privateKey
       if (blockchainSignature.withdrawalId) {
         txData = await signEthOffchainKMSTransaction(blockchainSignature, privateKey, testnet)
@@ -211,11 +211,11 @@ const processTransaction = async (
       const secret =
         wallets[0].mnemonic && blockchainSignature.index !== undefined
           ? await generatePrivateKeyFromMnemonic(
-              Currency.FLOW,
-              wallets[0].testnet,
-              wallets[0].mnemonic,
-              blockchainSignature.index,
-            )
+            Currency.FLOW,
+            wallets[0].testnet,
+            wallets[0].mnemonic,
+            blockchainSignature.index,
+          )
           : wallets[0].privateKey
       const u = blockchainSignature.serializedTransaction
       const r = JSON.parse(u)
@@ -231,11 +231,11 @@ const processTransaction = async (
       const onePrivateKey =
         wallets[0].mnemonic && blockchainSignature.index !== undefined
           ? await generatePrivateKeyFromMnemonic(
-              Currency.ONE,
-              wallets[0].testnet,
-              wallets[0].mnemonic,
-              blockchainSignature.index,
-            )
+            Currency.ONE,
+            wallets[0].testnet,
+            wallets[0].mnemonic,
+            blockchainSignature.index,
+          )
           : wallets[0].privateKey
       txData = await signOneKMSTransaction(blockchainSignature, onePrivateKey, testnet)
       if (!blockchainSignature.withdrawalId) {
@@ -248,11 +248,11 @@ const processTransaction = async (
       const celoPrivateKey =
         wallets[0].mnemonic && blockchainSignature.index !== undefined
           ? await generatePrivateKeyFromMnemonic(
-              Currency.CELO,
-              wallets[0].testnet,
-              wallets[0].mnemonic,
-              blockchainSignature.index,
-            )
+            Currency.CELO,
+            wallets[0].testnet,
+            wallets[0].mnemonic,
+            blockchainSignature.index,
+          )
           : wallets[0].privateKey
       const celoSDK = TatumCeloSDK({ apiKey, url })
       txData = await celoSDK.kms.sign(blockchainSignature as PendingTransaction, celoPrivateKey)
@@ -263,11 +263,11 @@ const processTransaction = async (
       const bscPrivateKey =
         wallets[0].mnemonic && blockchainSignature.index !== undefined
           ? await generatePrivateKeyFromMnemonic(
-              Currency.BSC,
-              wallets[0].testnet,
-              wallets[0].mnemonic,
-              blockchainSignature.index,
-            )
+            Currency.BSC,
+            wallets[0].testnet,
+            wallets[0].mnemonic,
+            blockchainSignature.index,
+          )
           : wallets[0].privateKey
       await bscBroadcast(await signBscKMSTransaction(blockchainSignature, bscPrivateKey), blockchainSignature.id)
       return
@@ -276,11 +276,11 @@ const processTransaction = async (
       const polygonPrivateKey =
         wallets[0].mnemonic && blockchainSignature.index !== undefined
           ? await generatePrivateKeyFromMnemonic(
-              Currency.MATIC,
-              wallets[0].testnet,
-              wallets[0].mnemonic,
-              blockchainSignature.index,
-            )
+            Currency.MATIC,
+            wallets[0].testnet,
+            wallets[0].mnemonic,
+            blockchainSignature.index,
+          )
           : wallets[0].privateKey
       await polygonBroadcast(
         await signPolygonKMSTransaction(blockchainSignature, polygonPrivateKey, testnet),
@@ -292,11 +292,11 @@ const processTransaction = async (
       const klaytnPrivateKey =
         wallets[0].mnemonic && blockchainSignature.index !== undefined
           ? await generatePrivateKeyFromMnemonic(
-              Currency.KLAY,
-              wallets[0].testnet,
-              wallets[0].mnemonic,
-              blockchainSignature.index,
-            )
+            Currency.KLAY,
+            wallets[0].testnet,
+            wallets[0].mnemonic,
+            blockchainSignature.index,
+          )
           : wallets[0].privateKey
       await klaytnBroadcast(
         await signKlayKMSTransaction(blockchainSignature, klaytnPrivateKey, testnet),
@@ -316,11 +316,11 @@ const processTransaction = async (
       const xdcPrivateKey =
         wallets[0].mnemonic && blockchainSignature.index !== undefined
           ? await generatePrivateKeyFromMnemonic(
-              Currency.XDC,
-              wallets[0].testnet,
-              wallets[0].mnemonic,
-              blockchainSignature.index,
-            )
+            Currency.XDC,
+            wallets[0].testnet,
+            wallets[0].mnemonic,
+            blockchainSignature.index,
+          )
           : wallets[0].privateKey
       await xdcBroadcast(await signXdcKMSTransaction(blockchainSignature, xdcPrivateKey), blockchainSignature.id)
       return
@@ -329,11 +329,11 @@ const processTransaction = async (
       const egldPrivateKey =
         wallets[0].mnemonic && blockchainSignature.index !== undefined
           ? await generatePrivateKeyFromMnemonic(
-              Currency.EGLD,
-              wallets[0].testnet,
-              wallets[0].mnemonic,
-              blockchainSignature.index,
-            )
+            Currency.EGLD,
+            wallets[0].testnet,
+            wallets[0].mnemonic,
+            blockchainSignature.index,
+          )
           : wallets[0].privateKey
       await egldBroadcast(await signEgldKMSTransaction(blockchainSignature, egldPrivateKey), blockchainSignature.id)
       return
@@ -342,11 +342,11 @@ const processTransaction = async (
       const tronPrivateKey =
         wallets[0].mnemonic && blockchainSignature.index !== undefined
           ? await generatePrivateKeyFromMnemonic(
-              Currency.TRON,
-              wallets[0].testnet,
-              wallets[0].mnemonic,
-              blockchainSignature.index,
-            )
+            Currency.TRON,
+            wallets[0].testnet,
+            wallets[0].mnemonic,
+            blockchainSignature.index,
+          )
           : wallets[0].privateKey
       const tronSDK = TatumTronSDK({ apiKey, url })
       txData = await tronSDK.kms.sign(blockchainSignature as PendingTransaction, tronPrivateKey)
@@ -432,11 +432,12 @@ const getPendingTransactions = async (
   }
 
   console.log(
-    `${new Date().toISOString()} - Getting pending transaction from ${chain} for ${
-      signatureIds.length > KMS_CONSTANTS.OUTPUT_WALLETS ? signatureIds.length + ' ' : ''
+    `${new Date().toISOString()} - Getting pending transaction from ${chain} for ${signatureIds.length > KMS_CONSTANTS.OUTPUT_WALLETS ? signatureIds.length + ' ' : ''
     }wallets${signatureIds.length > KMS_CONSTANTS.OUTPUT_WALLETS ? '' : ' ' + signatureIds.join(',')}.`,
   )
   try {
+
+
     const url = `${TATUM_URL}/v3/kms/pending/${chain}`
     const { data } = await axios.post(
       url,
@@ -447,7 +448,7 @@ const getPendingTransactions = async (
   } catch (e) {
     console.error(
       `${new Date().toISOString()} - Error received from API /v3/kms/pending/${chain} - ${(e as any).config.data}: ` +
-        e,
+      e,
     )
   }
   return []
@@ -496,8 +497,13 @@ export const processSignatures = async (
     const transactions = []
     try {
       for (const supportedChain of supportedChains) {
-        const wallets = getManagedWallets(pwd, supportedChain, testnet, path)
-        transactions.push(...(await getPendingTransactions(axios, supportedChain, wallets)))
+        var result = await checkExternalForPenddingTransaction(axios, supportedChain, externalUrl)
+        if (result) {
+          const wallets = getManagedWallets(pwd, supportedChain, testnet, path)
+          transactions.push(...(await getPendingTransactions(axios, supportedChain, wallets)))
+        } else {
+          console.log(`${new Date().toISOString()} - no pending transaction for ${supportedChain}`);
+        }
       }
     } catch (e) {
       console.error(e)
@@ -526,3 +532,20 @@ export const processSignatures = async (
     running = false
   }, period * 1000)
 }
+
+export const checkExternalForPenddingTransaction = async (axios: AxiosInstance, chain: string, externalUrl?: string) => {
+
+  const url = `${externalUrl}/chain/${chain}`;
+  try {
+    const { data } = await axios.get<number>(url);
+    if (data > 0) {
+      return true;
+    } else {
+      return false;
+    }
+  } catch (error) {
+    const err = error as AxiosError
+    console.log(err.response?.data)
+    return false;
+  }
+};
