@@ -390,11 +390,12 @@ const processTransaction = async (
       validatePrivateKeyWasFound(wallet, blockchainSignature, tronPrivateKey)
       const tronSDK = TatumTronSDK({ apiKey: process.env.TATUM_API_KEY as string, url: TATUM_URL as any })
       txData = await tronSDK.kms.sign(blockchainSignature as PendingTransaction, tronPrivateKey)
-      await axios.post<TransactionHash>(
+      const data = await axios.post<TransactionHash>(
         `${TATUM_URL}/v3/tron/broadcast`,
         { txData, signatureId: blockchainSignature.id },
         { headers: { 'x-api-key': apiKey } },
       )
+      th = data.data;
       return
     }
     case Currency.BTC: {
@@ -402,7 +403,7 @@ const processTransaction = async (
       if (blockchainSignature.withdrawalId) {
         txData = await signBitcoinOffchainKMSTransaction(blockchainSignature, wallets[0].mnemonic, testnet)
       } else {
-        await btcBroadcast(await signBitcoinKMSTransaction(blockchainSignature, privateKeys), blockchainSignature.id)
+        th = await btcBroadcast(await signBitcoinKMSTransaction(blockchainSignature, privateKeys), blockchainSignature.id)
         return
       }
 
