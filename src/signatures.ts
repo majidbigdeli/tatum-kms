@@ -39,6 +39,7 @@ import {
   signPolygonKMSTransaction,
   signVetKMSTransaction,
   signXdcKMSTransaction,
+  TransactionHash,
   TransactionKMS,
   vetBroadcast,
   xdcBroadcast,
@@ -52,6 +53,7 @@ import _ from 'lodash'
 import { KMS_CONSTANTS } from './constants'
 import { Signature, Wallet } from './interfaces'
 import { getManagedWallets, getWallet, getWalletWithMnemonicForChain } from './management'
+import { AppTransactionKMS, TransactionQtyResponseVM } from './types'
 
 const TATUM_URL: string = process.env.TATUM_API_URL || 'https://api.tatum.io'
 
@@ -97,7 +99,7 @@ function validatePrivateKeyWasFound(wallet: any, blockchainSignature: Transactio
 }
 
 const processTransaction = async (
-  blockchainSignature: TransactionKMS,
+  blockchainSignature: AppTransactionKMS,
   testnet: boolean,
   pwd: string,
   axios: AxiosInstance,
@@ -132,6 +134,7 @@ const processTransaction = async (
 
   const apiKey = process.env.TATUM_API_KEY as string
 
+  let th: TransactionHash | undefined = undefined;
   switch (blockchainSignature.chain) {
     case Currency.ALGO: {
       const algoSecret = wallets[0].secret ? wallets[0].secret : wallets[0].privateKey
@@ -387,7 +390,7 @@ const processTransaction = async (
       validatePrivateKeyWasFound(wallet, blockchainSignature, tronPrivateKey)
       const tronSDK = TatumTronSDK({ apiKey: process.env.TATUM_API_KEY as string, url: TATUM_URL as any })
       txData = await tronSDK.kms.sign(blockchainSignature as PendingTransaction, tronPrivateKey)
-      await axios.post(
+      await axios.post<TransactionHash>(
         `${TATUM_URL}/v3/tron/broadcast`,
         { txData, signatureId: blockchainSignature.id },
         { headers: { 'x-api-key': apiKey } },
@@ -463,13 +466,21 @@ const processTransaction = async (
     withdrawalId: blockchainSignature.withdrawalId,
     txData,
   })
+
+  if (blockchainSignature.isCustom) {
+    if (th) {
+      await callCompleteTransaction(axios, blockchainSignature, th, externalUrl);
+    }
+  }
 }
 
 const getPendingTransactions = async (
   axios: AxiosInstance,
   chain: Currency,
   signatureIds: string[],
-): Promise<TransactionKMS[]> => {
+  isCustom: boolean,
+  externalUrl?: string
+): Promise<AppTransactionKMS[]> => {
   if (signatureIds.length > KMS_CONSTANTS.SIGNATURE_IDS) {
     console.error(
       `${new Date().toISOString()} - Error: Exceeded limit ${KMS_CONSTANTS.SIGNATURE_IDS} wallets for chain ${chain}.`,
@@ -484,13 +495,14 @@ const getPendingTransactions = async (
   try {
 
 
-    const url = `${TATUM_URL}/v3/kms/pending/${chain}`
-    const { data } = await axios.post(
+
+    const url = isCustom === true ? `${externalUrl}/pending/${chain}` : `${TATUM_URL}/v3/kms/pending/${chain}`
+    const { data } = await axios.post<AppTransactionKMS[]>(
       url,
       { signatureIds },
       { headers: { 'x-api-key': process.env.TATUM_API_KEY as string } },
     )
-    return data as TransactionKMS[]
+    return data
   } catch (e) {
     console.error(
       `${new Date().toISOString()} - Error received from API /v3/kms/pending/${chain} - ${(e as any).config.data}: ` +
@@ -544,12 +556,21 @@ export const processSignatures = async (
     try {
       for (const supportedChain of supportedChains) {
         var result = await checkExternalForPenddingTransaction(axios, supportedChain, externalUrl)
-        if (result) {
-          const wallets = getManagedWallets(pwd, supportedChain, testnet, path)
-          transactions.push(...(await getPendingTransactions(axios, supportedChain, wallets)))
-        } else {
+
+        if (result.customKms === 0 && result.originalKms === 0) {
           console.log(`${new Date().toISOString()} - no pending transaction for ${supportedChain}`);
+        } else {
+          if (result.originalKms > 0) {
+            const wallets = getManagedWallets(pwd, supportedChain, testnet, path)
+            transactions.push(...(await getPendingTransactions(axios, supportedChain, wallets, false, externalUrl)))
+          }
+
+          if (result.customKms > 0) {
+            const wallets = getManagedWallets(pwd, supportedChain, testnet, path)
+            transactions.push(...(await getPendingTransactions(axios, supportedChain, wallets, true, externalUrl)))
+          }
         }
+
       }
     } catch (e) {
       console.error(e)
@@ -589,19 +610,31 @@ function getSignatureIdsLog(blockchainSignature: TransactionKMS): string {
   return signatures ? signatures.join(',') : ''
 }
 
-export const checkExternalForPenddingTransaction = async (axios: AxiosInstance, chain: string, externalUrl?: string) => {
-
+export const checkExternalForPenddingTransaction = async (axios: AxiosInstance, chain: string, externalUrl?: string): Promise<TransactionQtyResponseVM> => {
   const url = `${externalUrl}/chain/${chain}`;
   try {
-    const { data } = await axios.get<number>(url);
-    if (data > 0) {
-      return true;
-    } else {
-      return false;
-    }
+    const { data } = await axios.get<TransactionQtyResponseVM>(url);
+    return data;
   } catch (error) {
     const err = error as AxiosError
-    console.log(err.response?.data)
-    return false;
+    console.log(err.response?.data);
+    var a: TransactionQtyResponseVM = new TransactionQtyResponseVM();
+    a.customKms = 0;
+    a.originalKms = 0;
+    return a;
   }
 };
+
+export const callCompleteTransaction = async (axios: AxiosInstance, transaction: AppTransactionKMS, th: TransactionHash | undefined, externalUrl?: string) => {
+  if (th) {
+    const url = `${externalUrl}/${transaction.id}/${th.txId}`;
+    try {
+      await axios.put(url);
+    } catch (error) {
+      const err = error as AxiosError
+      console.log(err.response?.data);
+    }
+  }
+};
+
+
