@@ -105,8 +105,8 @@ const processTransaction = async (
   axios: AxiosInstance,
   path?: string,
   externalUrl?: string,
-) => {
-  let blockchainSignature = Majid(appBlockchainSignature);
+): Promise<TransactionHash | undefined> => {
+  let blockchainSignature = CopyToTransactionKMS(appBlockchainSignature);
 
   if (externalUrl) {
     console.log(`${new Date().toISOString()} - External url '${externalUrl}' is present, checking against it.`)
@@ -137,14 +137,15 @@ const processTransaction = async (
   const apiKey = process.env.TATUM_API_KEY as string
 
   let th: TransactionHash | undefined = undefined;
+
   switch (blockchainSignature.chain) {
     case Currency.ALGO: {
       const algoSecret = wallets[0].secret ? wallets[0].secret : wallets[0].privateKey
-      await algorandBroadcast(
+      th = await algorandBroadcast(
         await signAlgoKMSTransaction(blockchainSignature, algoSecret, testnet),
         blockchainSignature.id,
       )
-      return
+      return th;
     }
     case Currency.SOL: {
       const solSDK = TatumSolanaSDK({ apiKey: process.env.TATUM_API_KEY as string, url: TATUM_URL as any })
@@ -152,18 +153,19 @@ const processTransaction = async (
         blockchainSignature as PendingTransaction,
         wallets.map(w => w.privateKey),
       )
-      await axios.post(
+      const data = await axios.post<TransactionHash>(
         `${TATUM_URL}/v3/solana/broadcast`,
         { txData, signatureId: blockchainSignature.id },
         { headers: { 'x-api-key': apiKey } },
       )
-      return
+      th = data.data;
+      return th;
     }
     case Currency.BCH: {
       if (blockchainSignature.withdrawalId) {
         txData = await signBitcoinCashOffchainKMSTransaction(blockchainSignature, wallets[0].mnemonic, testnet)
       } else {
-        await bcashBroadcast(
+        th = await bcashBroadcast(
           await signBitcoinCashKMSTransaction(
             blockchainSignature,
             wallets.map(w => w.privateKey),
@@ -171,16 +173,16 @@ const processTransaction = async (
           ),
           blockchainSignature.id,
         )
-        return
+        return th;
       }
       break
     }
     case Currency.BNB: {
-      await bnbBroadcast(
+      th = await bnbBroadcast(
         await signBnbKMSTransaction(blockchainSignature, wallets[0].privateKey, testnet),
         blockchainSignature.id,
       )
-      return
+      return th;
     }
     case Currency.VET: {
       const wallet = wallets[0]
@@ -194,20 +196,20 @@ const processTransaction = async (
           )
           : wallet.privateKey
       validatePrivateKeyWasFound(wallet, blockchainSignature, pk)
-      await vetBroadcast(await signVetKMSTransaction(blockchainSignature, pk, testnet), blockchainSignature.id)
-      return
+      th = await vetBroadcast(await signVetKMSTransaction(blockchainSignature, pk, testnet), blockchainSignature.id)
+      return th;
     }
     case Currency.XRP: {
       const xrpSdk = TatumXrpSDK({ apiKey: process.env.TATUM_API_KEY as string, url: TATUM_URL as any })
       txData = await xrpSdk.kms.sign(blockchainSignature as PendingTransaction, wallets[0].secret)
-      await xrpSdk.blockchain.broadcast({ txData, signatureId: blockchainSignature.id })
-      return
+      th = await xrpSdk.blockchain.broadcast({ txData, signatureId: blockchainSignature.id })
+      return th;
     }
     case Currency.XLM: {
       const xlmSdk = TatumXlmSDK({ apiKey: process.env.TATUM_API_KEY as string, url: TATUM_URL as any })
       txData = await xlmSdk.kms.sign(blockchainSignature as PendingTransaction, wallets[0].secret, testnet)
-      await xlmSdk.blockchain.broadcast({ txData, signatureId: blockchainSignature.id })
-      return
+      th = await xlmSdk.blockchain.broadcast({ txData, signatureId: blockchainSignature.id })
+      return th;
     }
     case Currency.ETH: {
       const wallet = wallets[0]
@@ -224,8 +226,8 @@ const processTransaction = async (
       if (blockchainSignature.withdrawalId) {
         txData = await signEthOffchainKMSTransaction(blockchainSignature, privateKey, testnet)
       } else {
-        await ethBroadcast(await signEthKMSTransaction(blockchainSignature, privateKey), blockchainSignature.id)
-        return
+        th = await ethBroadcast(await signEthKMSTransaction(blockchainSignature, privateKey), blockchainSignature.id)
+        return th;
       }
       break
     }
@@ -245,11 +247,12 @@ const processTransaction = async (
       const r = JSON.parse(u)
       r.body.privateKey = secret
       blockchainSignature.serializedTransaction = JSON.stringify(r)
-      await flowBroadcastTx(
+      const data = await flowBroadcastTx(
         (await flowSignKMSTransaction(blockchainSignature, [secret], testnet))?.txId,
         blockchainSignature.id,
       )
-      return
+      th = data as TransactionHash;
+      return th;
     }
     case Currency.ONE: {
       const wallet = wallets[0]
@@ -265,8 +268,8 @@ const processTransaction = async (
       validatePrivateKeyWasFound(wallet, blockchainSignature, onePrivateKey)
       txData = await signOneKMSTransaction(blockchainSignature, onePrivateKey, testnet)
       if (!blockchainSignature.withdrawalId) {
-        await oneBroadcast(txData, blockchainSignature.id)
-        return
+        th = await oneBroadcast(txData, blockchainSignature.id)
+        return th;
       }
       break
     }
@@ -284,8 +287,8 @@ const processTransaction = async (
       validatePrivateKeyWasFound(wallet, blockchainSignature, celoPrivateKey)
       const celoSDK = TatumCeloSDK({ apiKey: process.env.TATUM_API_KEY as string, url: TATUM_URL as any })
       txData = await celoSDK.kms.sign(blockchainSignature as PendingTransaction, celoPrivateKey)
-      await celoSDK.blockchain.broadcast({ txData, signatureId: blockchainSignature.id })
-      return
+      th = await celoSDK.blockchain.broadcast({ txData, signatureId: blockchainSignature.id })
+      return th;
     }
     case Currency.BSC: {
       const wallet = wallets[0]
@@ -299,8 +302,8 @@ const processTransaction = async (
           )
           : wallet.privateKey
       validatePrivateKeyWasFound(wallet, blockchainSignature, bscPrivateKey)
-      await bscBroadcast(await signBscKMSTransaction(blockchainSignature, bscPrivateKey), blockchainSignature.id)
-      return
+      th = await bscBroadcast(await signBscKMSTransaction(blockchainSignature, bscPrivateKey), blockchainSignature.id)
+      return th
     }
     case Currency.MATIC: {
       const wallet = wallets[0]
@@ -314,11 +317,11 @@ const processTransaction = async (
           )
           : wallet.privateKey
       validatePrivateKeyWasFound(wallet, blockchainSignature, polygonPrivateKey)
-      await polygonBroadcast(
+      th = await polygonBroadcast(
         await signPolygonKMSTransaction(blockchainSignature, polygonPrivateKey, testnet),
         blockchainSignature.id,
       )
-      return
+      return th;
     }
     case Currency.KLAY: {
       const wallet = wallets[0]
@@ -332,11 +335,11 @@ const processTransaction = async (
           )
           : wallet.privateKey
       validatePrivateKeyWasFound(wallet, blockchainSignature, klaytnPrivateKey)
-      await klaytnBroadcast(
+      th = await klaytnBroadcast(
         await signKlayKMSTransaction(blockchainSignature, klaytnPrivateKey, testnet),
         blockchainSignature.id,
       )
-      return
+      return th;
     }
     case Currency.KCS: {
       const wallet = wallets[0]
@@ -345,8 +348,8 @@ const processTransaction = async (
           ? await kcsGeneratePrivateKeyFromMnemonic(wallet.testnet, wallet.mnemonic, blockchainSignature.index)
           : wallet.privateKey
       validatePrivateKeyWasFound(wallet, blockchainSignature, kcsPrivateKey)
-      await kcsBroadcast(await signKcsKMSTransaction(blockchainSignature, kcsPrivateKey), blockchainSignature.id)
-      return
+      th = await kcsBroadcast(await signKcsKMSTransaction(blockchainSignature, kcsPrivateKey), blockchainSignature.id)
+      return th;
     }
     case Currency.XDC: {
       const wallet = wallets[0]
@@ -360,8 +363,8 @@ const processTransaction = async (
           )
           : wallet.privateKey
       validatePrivateKeyWasFound(wallet, blockchainSignature, xdcPrivateKey)
-      await xdcBroadcast(await signXdcKMSTransaction(blockchainSignature, xdcPrivateKey), blockchainSignature.id)
-      return
+      th = await xdcBroadcast(await signXdcKMSTransaction(blockchainSignature, xdcPrivateKey), blockchainSignature.id)
+      return th;
     }
     case Currency.EGLD: {
       const wallet = wallets[0]
@@ -375,8 +378,8 @@ const processTransaction = async (
           )
           : wallet.privateKey
       validatePrivateKeyWasFound(wallet, blockchainSignature, egldPrivateKey)
-      await egldBroadcast(await signEgldKMSTransaction(blockchainSignature, egldPrivateKey), blockchainSignature.id)
-      return
+      th = await egldBroadcast(await signEgldKMSTransaction(blockchainSignature, egldPrivateKey), blockchainSignature.id)
+      return th;
     }
     case Currency.TRON: {
       const wallet = wallets[0]
@@ -399,15 +402,7 @@ const processTransaction = async (
         { headers: { 'x-api-key': apiKey } },
       )
       th = data.data;
-
-      if (appBlockchainSignature.isCustom) {
-        console.log(th);
-        if (th) {
-          await callCompleteTransaction(axios, appBlockchainSignature, th, externalUrl);
-        }
-      }
-
-      return
+      return th;
     }
     case Currency.BTC: {
       const privateKeys = await getPrivateKeys(wallets, signatures, Currency.BTC)
@@ -415,7 +410,7 @@ const processTransaction = async (
         txData = await signBitcoinOffchainKMSTransaction(blockchainSignature, wallets[0].mnemonic, testnet)
       } else {
         th = await btcBroadcast(await signBitcoinKMSTransaction(blockchainSignature, privateKeys), blockchainSignature.id)
-        return
+        return th;
       }
 
       break
@@ -425,11 +420,11 @@ const processTransaction = async (
       if (blockchainSignature.withdrawalId) {
         txData = await signLitecoinOffchainKMSTransaction(blockchainSignature, wallets[0].mnemonic, testnet)
       } else {
-        await ltcBroadcast(
+        th = await ltcBroadcast(
           await signLitecoinKMSTransaction(blockchainSignature, privateKeys, testnet),
           blockchainSignature.id,
         )
-        return
+        return th;
       }
       break
     }
@@ -437,7 +432,7 @@ const processTransaction = async (
       if (blockchainSignature.withdrawalId) {
         txData = await signDogecoinOffchainKMSTransaction(blockchainSignature, wallets[0].mnemonic, testnet)
       } else {
-        await dogeBroadcast(
+        th = await dogeBroadcast(
           await signDogecoinKMSTransaction(
             blockchainSignature,
             wallets.map(w => w.privateKey),
@@ -445,7 +440,7 @@ const processTransaction = async (
           ),
           blockchainSignature.id,
         )
-        return
+        return th
       }
       break
     }
@@ -464,21 +459,27 @@ const processTransaction = async (
         }
         txData = await cardanoSDK.kms.sign(blockchainSignature as PendingTransaction, privateKeys, { testnet })
       } else {
-        await cardanoSDK.blockchain.broadcast({
+        th = await cardanoSDK.blockchain.broadcast({
           txData: await cardanoSDK.kms.sign(blockchainSignature as PendingTransaction, wallets.map(w => w.privateKey), { testnet }),
           signatureId: blockchainSignature.id,
         })
-        return
+        return th;
       }
     }
   }
-  await offchainBroadcast({
+  const data = await offchainBroadcast({
     currency: blockchainSignature.chain,
     signatureId: blockchainSignature.id,
     withdrawalId: blockchainSignature.withdrawalId,
     txData,
   })
 
+  if (data.completed) {
+    th = {
+      txId: data.txId,
+    }
+  }
+  return th;
 }
 
 const getPendingTransactions = async (
@@ -585,7 +586,13 @@ export const processSignatures = async (
     const data = []
     for (const transaction of transactions) {
       try {
-        await processTransaction(transaction, testnet, pwd, axios, path, externalUrl)
+        var th = await processTransaction(transaction, testnet, pwd, axios, path, externalUrl)
+        if (transaction.isCustom) {
+          if (th) {
+            await callCompleteTransaction(axios, transaction, th, externalUrl);
+          }
+        }
+
         console.log(`${new Date().toISOString()} - Tx was processed: ${transaction.id}`)
       } catch (e) {
         const msg = (<any>e).response ? JSON.stringify((<any>e).response.data, null, 2) : `${e}`
@@ -639,7 +646,7 @@ export const callCompleteTransaction = async (axios: AxiosInstance, transaction:
     const url = `${externalUrl}/${transaction.id}/${th.txId}`;
     try {
       await axios.put(url);
-    } 
+    }
     catch (error) {
       const err = error as AxiosError
       console.log(err.response?.data);
@@ -647,7 +654,7 @@ export const callCompleteTransaction = async (axios: AxiosInstance, transaction:
   }
 };
 
-export const Majid = (transaction: AppTransactionKMS) => {
+export const CopyToTransactionKMS = (transaction: AppTransactionKMS) => {
 
   let a =
     {
